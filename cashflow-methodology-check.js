@@ -37,8 +37,10 @@ function methodology(a){
   const inc = Math.max(1,income);
   const essPct=essential/inc, nonPct=nonessential/inc, savePct=savings/inc, dsr=debtpay/inc;
   const lin=(x,x0,y0,x1,y1)=>y0+(y1-y0)*(x-x0)/(x1-x0);
-  const eS = essPct<=.40?100:essPct<=.50?lin(essPct,.40,100,.50,85):essPct<=.60?lin(essPct,.50,85,.60,55):essPct<=.70?lin(essPct,.60,55,.70,25):Math.max(0,lin(essPct,.70,25,1,0));
-  const nS = nonPct<=.20?100:nonPct<=.30?lin(nonPct,.20,100,.30,80):nonPct<=.40?lin(nonPct,.30,80,.40,40):Math.max(0,lin(nonPct,.40,40,1,0));
+  // Tails complete the analyst's underspecified "0–25" / "0–40" ranges per the
+  // Technical Specification: essential reaches 0 at 80%, non-essential at 60%.
+  const eS = essPct<=.40?100:essPct<=.50?lin(essPct,.40,100,.50,85):essPct<=.60?lin(essPct,.50,85,.60,55):essPct<=.70?lin(essPct,.60,55,.70,25):essPct<.80?lin(essPct,.70,25,.80,0):0;
+  const nS = nonPct<=.20?100:nonPct<=.30?lin(nonPct,.20,100,.30,80):nonPct<=.40?lin(nonPct,.30,80,.40,40):nonPct<.60?lin(nonPct,.40,40,.60,0):0;
   const sS = savePct<=0?0:savePct<.10?lin(savePct,0,0,.10,40):savePct<.20?lin(savePct,.10,40,.20,80):savePct<.30?lin(savePct,.20,80,.30,100):100;
   const overall = 0.4*eS+0.2*nS+0.4*sS;
   const essLvl = essPct<=.40?'Отлично':essPct<=.45?'Много добро':essPct<=.55?'Добро':essPct<=.65?'Нужда от подобрение':'Рисково';
@@ -66,7 +68,11 @@ const profiles=[
  ['P3 Deficit/Risky',      P({'INC-01':'2000','DEM-04':'mortgage','EXP-06':'400','EXP-04':'300','EXP-02':'500','EXP-11':'300','EXP-14':'900','SAV-04':'0'})],
  ['P4 Debt-critical',      P({'INC-01':'3000','DEM-04':'mortgage','EXP-02':'1000','EXP-11':'700','EXP-06':'500','EXP-14':'300','SAV-04':'400'})],
  ['P5 Annual fields /12',  P({'INC-01':'3000','EXP-06':'800','EXP-03':'1200','EXP-15':'3600','EXP-14':'450','SAV-04':'450'})],
- ['P6 Multi-income',       P({'INC-01':'2000','G-INC':['bonus','rent'],'INC-02':'400','INC-05':'600','EXP-06':'900','EXP-04':'300','EXP-14':'600','SAV-04':'600','EXP-13':'120'})]
+ ['P6 Multi-income',       P({'INC-01':'2000','G-INC':['bonus','rent'],'INC-02':'400','INC-05':'600','EXP-06':'900','EXP-04':'300','EXP-14':'600','SAV-04':'600','EXP-13':'120'})],
+ // Boundary profiles locking the new tail endpoints (essential→0 at 80%, non-ess→0 at 60%).
+ ['B1 Essential 85% (>80 tail)', P({'INC-01':'2000','EXP-06':'1700'})],       // essPct .85 -> eS 0
+ ['B2 Non-ess 50% (mid tail)',   P({'INC-01':'2000','EXP-14':'1000'})],       // nonPct .50 -> nS 20
+ ['B3 Non-ess 55% (mid tail)',   P({'INC-01':'2000','EXP-14':'1100'})]        // nonPct .55 -> nS 10
 ];
 const pct=x=>(x*100).toFixed(1)+'%', r1=x=>Math.round(x*10)/10, eq=(x,y)=>Math.abs(x-y)<0.5;
 let fails=0;
