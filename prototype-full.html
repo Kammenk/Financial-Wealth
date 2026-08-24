@@ -598,6 +598,7 @@ function result(){
     (r.provisional ? '<p style="font-family:var(--mono);font-size:10.5px;color:var(--amber);margin:8px 0 0">⚠ Заявено просрочие ограничава максималния резултат — оценката е предварителна.</p>' : '')+
   '</section>'+
 
+  cashflowSection()+
   '<section style="border-top:1px solid var(--hair);padding:32px 20px 24px">'+
     '<div style="'+EYEBROW+'">Осемте компонента</div>'+
     '<div style="margin-top:6px">'+r.comps.map(p => meter(p, open.indexOf(p.key) === -1)).join('')+'</div>'+
@@ -652,6 +653,7 @@ function report(){
     '<p style="font-size:13px;color:var(--soft);margin:12px 0 0">По-добре от <span style="font-family:var(--mono);font-weight:600;color:var(--ink)">'+r.pct+'%</span> от '+r.peerLabel+'</p>'+
   '</section>'+
 
+  cashflowSection()+
   '<section style="padding:0 20px 30px">'+
     '<div style="'+EYEBROW+'">Осемте компонента, отключени</div>'+
     '<div style="margin-top:6px">'+r.comps.map(p =>
@@ -1011,7 +1013,7 @@ function quiz(){
 
   return '<div style="flex:1;display:flex;flex-direction:column;min-height:var(--screenh)">'+
     '<div style="flex:1;padding:26px 20px 24px">'+
-      '<div style="height:4px;background:var(--hair);border-radius:2px;overflow:hidden;margin:0 0 18px"><div style="height:100%;width:'+Math.round(answeredSteps()/Math.max(1,totalSteps())*100)+'%;background:var(--petrol);border-radius:2px;transition:width .25s ease"></div></div>'+'<div style="margin-bottom:2px"><span style="font-family:var(--mono);font-size:11.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--brass)">'+q.cat+'</span></div>'+
+      '<div style="margin-bottom:2px"><span style="font-family:var(--mono);font-size:11.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--brass)">'+q.cat+'</span></div>'+
       (q.gate?'<div style="font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--faint);margin-top:8px">за да покажем правилните въпроси</div>':'')+
       '<h2 style="font-family:var(--serif);font-size:24px;line-height:1.26;font-weight:600;margin:'+(q.gate?'8px':'0')+' 0 0">'+q.t+'</h2>'+
       (q.h?'<p style="font-size:13.5px;line-height:1.55;color:var(--soft);margin:10px 0 0">'+q.h+'</p>':'')+
@@ -1044,7 +1046,7 @@ function groupList(q){
   }
   return '<div style="flex:1;display:flex;flex-direction:column;min-height:var(--screenh)">'+
     '<div style="flex:1;padding:26px 20px 24px">'+
-      '<div style="height:4px;background:var(--hair);border-radius:2px;overflow:hidden;margin:0 0 18px"><div style="height:100%;width:'+Math.round(answeredSteps()/Math.max(1,totalSteps())*100)+'%;background:var(--petrol);border-radius:2px;transition:width .25s ease"></div></div>'+'<div style="margin-bottom:2px"><span style="font-family:var(--mono);font-size:11.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--brass)">'+q.cat+'</span></div>'+
+      '<div style="margin-bottom:2px"><span style="font-family:var(--mono);font-size:11.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--brass)">'+q.cat+'</span></div>'+
       '<h2 style="font-family:var(--serif);font-size:24px;line-height:1.26;font-weight:600;margin:8px 0 0">'+q.t+'</h2>'+
       (q.h?'<p style="font-size:13.5px;line-height:1.55;color:var(--soft);margin:10px 0 0">'+q.h+'</p>':'')+
       list+
@@ -1139,9 +1141,9 @@ function header(){
       '<button onclick="goBack()" aria-label="Назад" style="border:none;background:transparent;color:var(--soft);font-family:var(--mono);font-size:17px;padding:4px 10px 4px 0;cursor:pointer">&larr;</button>'+
       '<span style="font-family:var(--mono);font-size:12px;letter-spacing:0.06em;color:var(--ink);text-align:center">'+
         '<span style="color:var(--brass);text-transform:uppercase;letter-spacing:0.12em">'+q.cat+'</span>'+
-        '&nbsp;&nbsp;'+answeredSteps()+' / '+totalSteps()+'</span>'+
+        '</span>'+
       tbtn+'</div>'+
-      '<div style="height:2px;background:var(--hair)"><div style="height:100%;width:'+overall+'%;background:var(--petrol);transition:width .25s ease"></div></div></div>';
+      '<div style="height:4px;background:var(--hair);border-radius:2px"><div style="height:100%;width:'+overall+'%;background:var(--petrol);border-radius:2px;transition:width .25s ease"></div></div></div>';
   }
   return '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px">'+
     '<div onclick="set({screen:\'landing\'})" style="font-family:var(--serif);font-weight:600;font-size:17px;cursor:pointer">Финограф</div>'+
@@ -1183,6 +1185,106 @@ function mapAnswers(){
     invest: sum('AST-04','AST-05','AST-06','AST-07','AST-08','AST-09','AST-10'),
     insurance: ins, pension: pension, discipline: a['DEB-18']||'none', shock: a['BEH-03'], gambling: g('GAM-02')
   };
+}
+
+
+/* ============ Cash-flow module report (deterministic, bg-BG) ============ */
+var CFLABEL={EXCELLENT:'Отлично',VERY_GOOD:'Много добро',GOOD:'Добро',NEEDS_IMPROVEMENT:'Нужда от подобрение',RISKY:'Рисково'};
+function cfMoney(x){var v=(Math.round(x*100)/100).toFixed(2).replace('.',',');var p=v.split(',');p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,' ');return p.join(',')+' €';}
+function cfPct(x){return (Math.round(x*10)/10).toFixed(1).replace('.',',')+'%';}
+var CF_ESS={
+ EXCELLENT:'Основните Ви разходи са {r} ({a}) от месечния Ви доход. Те са в отличен диапазон и оставят добра гъвкавост в бюджета.',
+ VERY_GOOD:'Основните Ви разходи са {r} ({a}). Те са под препоръчителната горна граница от 50%.',
+ GOOD:'Основните Ви разходи са {r} ({a}). Те са около препоръчителната граница от 50%; наблюдавайте нарастването им.',
+ NEEDS_IMPROVEMENT:'Основните Ви разходи са {r} ({a}) и са над препоръчителните 50%.',
+ RISKY:'Основните Ви разходи са {r} ({a}). Високият им дял ограничава устойчивостта на бюджета.'};
+var CF_NON={
+ EXCELLENT:'Неосновните Ви разходи са {r} ({a}) и са в отличен диапазон.',
+ VERY_GOOD:'Неосновните Ви разходи са {r} ({a}) и са под препоръчителните 30%.',
+ GOOD:'Неосновните Ви разходи са {r} ({a}) и са в рамките на препоръчителните 30%.',
+ NEEDS_IMPROVEMENT:'Неосновните Ви разходи са {r} ({a}) и надвишават препоръчителните 30%.',
+ RISKY:'Неосновните Ви разходи са {r} ({a}). Този дял създава значителен натиск върху бюджета.'};
+var CF_SAV={
+ EXCELLENT:'Спестявате и инвестирате {r} ({a}) от месечния си доход. Това е отличен темп на натрупване.',
+ VERY_GOOD:'Спестявате и инвестирате {r} ({a}), което покрива препоръчителния минимум от 20%.',
+ GOOD:'Спестявате и инвестирате {r} ({a}). Резултатът е близо до препоръчителния минимум от 20%.',
+ NEEDS_IMPROVEMENT:'Спестявате и инвестирате {r} ({a}). Необходим е по-висок устойчив месечен принос.',
+ RISKY:'Спестявате и инвестирате {r} ({a}). Ниският или нулев темп ограничава натрупването на резерв и богатство.'};
+function cfFill(t,r,a){return t.replace('{r}',cfPct(r)).replace('{a}',cfMoney(a));}
+function cashflowResult(){
+  var m=mapAnswers();
+  var income=m.income, ess=m.essential+m.debtpay, non=m.nonessential, sav=m.savings;
+  var free=income-ess-non, residual=free-sav;
+  var deficit=Math.max(0,ess+non-income), unalloc=Math.max(0,residual);
+  if(!(income>0)) return {status:'BLOCKED_ZERO_INCOME'};
+  if(sav>Math.max(0,free)+0.005) return {status:'BLOCKED_INCONSISTENT_CASH_FLOW'};
+  var essPct=ess/income, nonPct=non/income, savPct=sav/income, gamRate=(m.gambling||0)/income;
+  var eS=pw(essPct,T_ESS), nS=pw(nonPct,T_NON), sS=pw(savPct,T_SAVE);
+  var raw=clamp(0.4*eS+0.2*nS+0.4*sS);
+  var catOf=function(s){return s>=90?'EXCELLENT':s>=80?'VERY_GOOD':s>=65?'GOOD':s>=40?'NEEDS_IMPROVEMENT':'RISKY';};
+  var essCat=essPct<=.40?'EXCELLENT':essPct<=.45?'VERY_GOOD':essPct<=.55?'GOOD':essPct<=.65?'NEEDS_IMPROVEMENT':'RISKY';
+  var nonCat=nonPct<=.20?'EXCELLENT':nonPct<=.25?'VERY_GOOD':nonPct<=.30?'GOOD':nonPct<=.40?'NEEDS_IMPROVEMENT':'RISKY';
+  var savCat=savPct>=.30?'EXCELLENT':savPct>=.20?'VERY_GOOD':savPct>=.15?'GOOD':savPct>.05?'NEEDS_IMPROVEMENT':'RISKY';
+  var type=deficit>0?'DEFICIT':(residual>0?'SURPLUS':'BALANCED');
+  var rec=deficit>0?'DEFICIT':essPct>.65?'ESSENTIAL_RISK':(essPct>.55&&savPct<.20)?'ESSENTIAL_AND_SAVING':(nonPct>.30&&savPct<.20)?'NONESSENTIAL_AND_SAVING':savPct<.20?'SAVING':(essPct<=.40&&nonPct<=.20&&savPct>=.30)?'STRONG_ACCUMULATION':'BALANCED';
+  var dEss=Math.max(0,ess-income*0.50), dNon=Math.max(0,non-income*0.30), dSav=Math.max(0,income*0.20-sav);
+  var proj=null;
+  if(rec==='DEFICIT') proj={delta:deficit,projected:null};
+  else if(rec==='ESSENTIAL_RISK'||rec==='ESSENTIAL_AND_SAVING') proj={delta:dEss,projected:Math.round(clamp(0.4*pw(0.50,T_ESS)+0.2*nS+0.4*sS))};
+  else if(rec==='NONESSENTIAL_AND_SAVING') proj={delta:dNon,projected:Math.round(clamp(0.4*eS+0.2*pw(0.30,T_NON)+0.4*sS))};
+  else if(rec==='SAVING') proj=unalloc>=dSav-0.005?{delta:dSav,projected:Math.round(clamp(0.4*eS+0.2*nS+0.4*pw(0.20,T_SAVE)))}:{delta:dSav,projected:null};
+  var warn=gamRate>0.05?{rate:gamRate*100,amount:(m.gambling||0)}:null;
+  return {status:'COMPLETE',income:income,ess:ess,non:non,sav:sav,residual:residual,deficit:deficit,unalloc:unalloc,
+    essPct:essPct*100,nonPct:nonPct*100,savPct:savPct*100,eS:eS,nS:nS,sS:sS,
+    score:Math.round(raw),raw:raw,contribution:raw*0.20,category:catOf(raw),
+    essCat:essCat,nonCat:nonCat,savCat:savCat,type:type,rec:rec,proj:proj,warn:warn};
+}
+function cfRecText(res){
+  var R=res.rec, d=res.proj?res.proj.delta:0;
+  if(R==='DEFICIT') return 'Месечните Ви разходи превишават дохода с '+cfMoney(res.deficit)+'. Първата цел е да достигнете поне нулев месечен баланс.';
+  if(R==='ESSENTIAL_RISK') return 'Основните Ви разходи са '+cfPct(res.essPct)+' от дохода. За достигане на 50% е необходима месечна промяна от '+cfMoney(d)+' чрез намаляване на тези разходи и/или увеличение на дохода.';
+  if(R==='ESSENTIAL_AND_SAVING') return 'Високият дял на основните разходи ограничава възможността за спестяване. Първата цел е приближаване към 50%, което изисква промяна от '+cfMoney(d)+' месечно.';
+  if(R==='NONESSENTIAL_AND_SAVING') return 'Неосновните разходи са над 30%, а спестяванията са под 20%. Намаление с '+cfMoney(d)+' месечно би довело неосновните разходи до препоръчителната граница.';
+  if(R==='SAVING') return 'За достигане на спестявания от 20% са необходими още '+cfMoney(d)+' месечно.';
+  if(R==='STRONG_ACCUMULATION') return 'Паричният Ви поток подкрепя силно натрупване: основните и неосновните разходи са добре контролирани, а спестяванията са поне 30%.';
+  return 'Паричният Ви поток е балансиран. Поддържайте редовното проследяване на разходите и последователното спестяване.';
+}
+function cashflowSection(){
+  var res; try{res=cashflowResult();}catch(e){return '';}
+  var wrap=function(inner){return '<section style="border-top:1px solid var(--hair);padding:32px 20px"><div style="'+EYEBROW+';color:var(--petrol)">Паричен поток</div>'+inner+'</section>';};
+  if(res.status==='BLOCKED_ZERO_INCOME') return wrap('<p style="font-size:14px;line-height:1.6;color:var(--soft);margin:12px 0 0">Не е въведен месечен доход, затова не се изчислява оценка за паричния поток.</p>');
+  if(res.status==='BLOCKED_INCONSISTENT_CASH_FLOW') return wrap('<p style="font-size:14px;line-height:1.6;color:var(--soft);margin:12px 0 0">Декларираното спестяване надвишава свободните средства преди спестяване. Коригирайте сумите, за да се изчисли оценка.</p>');
+  var comp=function(name,w,pts,cat,note){
+    return '<div style="padding:14px 0;border-bottom:1px solid var(--hair)">'+
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">'+
+        '<span style="font-size:14px;font-weight:600">'+name+' <span style="font-family:var(--mono);font-size:10px;font-weight:400;color:var(--faint)">'+w+'</span></span>'+
+        '<span style="font-family:var(--mono);font-size:13px;color:var(--soft)">'+Math.round(pts)+'/100 · '+CFLABEL[cat]+'</span></div>'+
+      '<div style="height:3px;background:var(--hair);margin-top:9px"><div style="width:'+Math.round(pts)+'%;height:100%;background:var(--petrol)"></div></div>'+
+      '<div style="font-size:12.5px;line-height:1.55;color:var(--soft);margin-top:8px">'+note+'</div></div>';
+  };
+  var typeLabel={DEFICIT:'Дефицит',SURPLUS:'Излишък',BALANCED:'Балансиран'}[res.type];
+  var overview='<div style="margin-top:14px">'+
+    [['Общ месечен доход',cfMoney(res.income)],['Основни разходи',cfMoney(res.ess)],['Неосновни разходи',cfMoney(res.non)],['Спестяване',cfMoney(res.sav)],
+     [res.deficit>0?'Месечен дефицит':'Неразпределен остатък',cfMoney(res.deficit>0?res.deficit:res.unalloc)]]
+    .map(function(r){return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--hair);font-family:var(--mono);font-size:13px"><span style="color:var(--soft)">'+r[0]+'</span><span>'+r[1]+'</span></div>';}).join('')+'</div>';
+  var proj=res.proj&&res.proj.projected!=null?
+    '<p style="font-size:13px;line-height:1.6;color:var(--soft);margin:12px 0 0">Ако приложите месечната промяна от '+cfMoney(res.proj.delta)+', прогнозната оценка за паричния поток би се променила от '+res.score+'/100 на '+res.proj.projected+'/100.</p>':'';
+  var warn=res.warn?'<p style="font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--amber);margin:12px 0 0">⚠ Разходите Ви за хазарт са '+cfPct(res.warn.rate)+' ('+cfMoney(res.warn.amount)+') от месечния доход и надвишават прага за внимание от 5%.</p>':'';
+  return wrap(
+    '<div style="display:flex;align-items:baseline;gap:10px;margin-top:8px">'+
+      '<span style="font-family:var(--mono);font-weight:600;font-size:52px;line-height:1;letter-spacing:-0.03em">'+res.score+'</span>'+
+      '<span style="font-family:var(--mono);font-size:14px;color:var(--soft)">/ 100</span>'+
+      '<span style="margin-left:auto;font-family:var(--mono);font-size:11.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--petrol);border:1px solid var(--petrol);padding:3px 8px;border-radius:3px;white-space:nowrap">'+CFLABEL[res.category]+'</span></div>'+
+    '<p style="font-size:12.5px;color:var(--soft);margin:8px 0 0">Принос към общата оценка за финансово здраве: '+(Math.round(res.contribution*10)/10).toString().replace('.',',')+' / 20 точки · Статус: '+typeLabel+'</p>'+
+    overview+
+    '<div style="margin-top:18px">'+
+      comp('Основни разходи','40%',res.eS,res.essCat,cfFill(CF_ESS[res.essCat],res.essPct,res.ess))+
+      comp('Неосновни разходи','20%',res.nS,res.nonCat,cfFill(CF_NON[res.nonCat],res.nonPct,res.non))+
+      comp('Спестявания','40%',res.sS,res.savCat,cfFill(CF_SAV[res.savCat],res.savPct,res.sav))+
+    '</div>'+
+    '<div style="margin-top:18px;border:1px solid var(--petrol);border-radius:5px;padding:14px 16px">'+
+      '<div style="font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--petrol)">Водеща препоръка</div>'+
+      '<p style="font-size:14px;line-height:1.6;margin:8px 0 0">'+cfRecText(res)+'</p>'+proj+'</div>'+warn);
 }
 
 render();
