@@ -29,16 +29,24 @@ const TEST = `
 const G = (a,id) => { const v=parseFloat(a[id]); return isNaN(v)?0:v; };
 function methodology(a){
   const income = G(a,'INC-01')+G(a,'INC-02')+G(a,'INC-03')+G(a,'INC-04')+G(a,'INC-05')+G(a,'INC-06')+G(a,'INC-07');
-  const essential = G(a,'EXP-01')+G(a,'EXP-02')+G(a,'EXP-03')/12+G(a,'EXP-04')+G(a,'EXP-05')+G(a,'EXP-06')
-                  + G(a,'EXP-07')+G(a,'EXP-08')+G(a,'EXP-09')+G(a,'EXP-10')+G(a,'EXP-11')+G(a,'EXP-12')+G(a,'EXP-15')/12;
-  const nonessential = G(a,'EXP-14');
-  const savings = G(a,'SAV-04')+G(a,'EXP-13');
-  const debtpay = G(a,'EXP-02')+G(a,'EXP-11');
+  // Debt payments DERIVED from per-obligation records (no aggregate EXP-02/EXP-11).
+  const arr=id=>Array.isArray(a[id])?a[id]:[];
+  const sumF=(id,f)=>arr(id).reduce((t,e)=>t+(parseFloat(e[f])||0),0);
+  const cardPay=arr('DEB-CARD').reduce((t,e)=>t+(e.behavior==='always'?0:(parseFloat(e.minpay)||0)),0);
+  const odOut=a['G-OVER']==='yes'?G(a,'DEB-OD-FEES')+G(a,'DEB-OD-PRIN'):0;
+  const debtpay = sumF('DEB-MORT','pay')+sumF('DEB-LOAN','pay')+cardPay+odOut;
+  const essExcl = G(a,'EXP-01')+G(a,'EXP-03')+G(a,'EXP-04')+G(a,'EXP-05')+G(a,'EXP-06')
+                + G(a,'EXP-07')+G(a,'EXP-08')+G(a,'EXP-09')+G(a,'EXP-10')+G(a,'EXP-12');
+  const essential = essExcl+debtpay;                       // essential includes debt service
+  const nonessential = G(a,'EXP-14')+G(a,'GAM-02');
+  const savings = G(a,'SAV-04')+G(a,'SAV-05')+G(a,'EXP-13');
   const inc = Math.max(1,income);
   const essPct=essential/inc, nonPct=nonessential/inc, savePct=savings/inc, dsr=debtpay/inc;
   const lin=(x,x0,y0,x1,y1)=>y0+(y1-y0)*(x-x0)/(x1-x0);
-  const eS = essPct<=.40?100:essPct<=.50?lin(essPct,.40,100,.50,85):essPct<=.60?lin(essPct,.50,85,.60,55):essPct<=.70?lin(essPct,.60,55,.70,25):Math.max(0,lin(essPct,.70,25,1,0));
-  const nS = nonPct<=.20?100:nonPct<=.30?lin(nonPct,.20,100,.30,80):nonPct<=.40?lin(nonPct,.30,80,.40,40):Math.max(0,lin(nonPct,.40,40,1,0));
+  // Tails complete the analyst's underspecified "0–25" / "0–40" ranges per the
+  // Technical Specification: essential reaches 0 at 80%, non-essential at 60%.
+  const eS = essPct<=.40?100:essPct<=.50?lin(essPct,.40,100,.50,85):essPct<=.60?lin(essPct,.50,85,.60,55):essPct<=.70?lin(essPct,.60,55,.70,25):essPct<.80?lin(essPct,.70,25,.80,0):0;
+  const nS = nonPct<=.20?100:nonPct<=.30?lin(nonPct,.20,100,.30,80):nonPct<=.40?lin(nonPct,.30,80,.40,40):nonPct<.60?lin(nonPct,.40,40,.60,0):0;
   const sS = savePct<=0?0:savePct<.10?lin(savePct,0,0,.10,40):savePct<.20?lin(savePct,.10,40,.20,80):savePct<.30?lin(savePct,.20,80,.30,100):100;
   const overall = 0.4*eS+0.2*nS+0.4*sS;
   const essLvl = essPct<=.40?'Отлично':essPct<=.45?'Много добро':essPct<=.55?'Добро':essPct<=.65?'Нужда от подобрение':'Рисково';
@@ -62,11 +70,16 @@ const base={'DEM-01':'35–44','DEM-03':'employed','DEM-04':'rent','INC-08':'mos
 const P=o=>Object.assign({},base,o);
 const profiles=[
  ['P1 Balanced/Excellent', P({'INC-01':'3000','EXP-04':'300','EXP-06':'600','EXP-07':'300','EXP-14':'600','SAV-04':'900'})],
- ['P2 Good/mid',           P({'INC-01':'2500','EXP-06':'700','EXP-04':'250','EXP-07':'250','EXP-02':'175','EXP-14':'750','SAV-04':'300'})],
- ['P3 Deficit/Risky',      P({'INC-01':'2000','DEM-04':'mortgage','EXP-06':'400','EXP-04':'300','EXP-02':'500','EXP-11':'300','EXP-14':'900','SAV-04':'0'})],
- ['P4 Debt-critical',      P({'INC-01':'3000','DEM-04':'mortgage','EXP-02':'1000','EXP-11':'700','EXP-06':'500','EXP-14':'300','SAV-04':'400'})],
- ['P5 Annual fields /12',  P({'INC-01':'3000','EXP-06':'800','EXP-03':'1200','EXP-15':'3600','EXP-14':'450','SAV-04':'450'})],
- ['P6 Multi-income',       P({'INC-01':'2000','G-INC':['bonus','rent'],'INC-02':'400','INC-05':'600','EXP-06':'900','EXP-04':'300','EXP-14':'600','SAV-04':'600','EXP-13':'120'})]
+ ['P2 Mortgage record',    P({'INC-01':'2500','DEM-04':'mortgage','DEB-MORT':[{pay:'175'}],'EXP-03':'20','EXP-05':'100','EXP-06':'700','EXP-04':'250','EXP-07':'250','EXP-14':'750','SAV-04':'300'})],
+ ['P3 Deficit/Risky',      P({'INC-01':'2000','DEM-04':'mortgage','DEB-MORT':[{pay:'500'}],'G-LOANS':'yes','DEB-LOAN':[{pay:'300'}],'EXP-06':'400','EXP-04':'300','EXP-14':'900','SAV-04':'0'})],
+ ['P4 Debt-critical',      P({'INC-01':'3000','DEM-04':'mortgage','DEB-MORT':[{pay:'1000'}],'G-LOANS':'yes','DEB-LOAN':[{pay:'700'}],'EXP-06':'500','EXP-14':'300','SAV-04':'400'})],
+ ['P5 Card+overdraft',     P({'INC-01':'3000','G-CARDS':'yes','DEB-CARD':[{bal:'2000',limit:'5000',minpay:'150',behavior:'min'}],'G-OVER':'yes','DEB-16':'800','DEB-17':'13','DEB-OD-FEES':'40','DEB-OD-PRIN':'100','EXP-06':'800','EXP-14':'450','SAV-04':'300','SAV-05':'200'})],
+ ['P6 Invest+gambling',    P({'INC-01':'2000','EXP-06':'900','EXP-04':'300','EXP-14':'600','GAM-01':'yes','GAM-02':'100','SAV-04':'300','SAV-05':'150','EXP-13':'120'})],
+ ['P7 Card paid-in-full',  P({'INC-01':'2000','G-CARDS':'yes','DEB-CARD':[{bal:'700',limit:'3000',minpay:'200',behavior:'always'}],'EXP-06':'600','EXP-14':'400','SAV-04':'300'})],
+ // Boundary profiles locking the new tail endpoints (essential→0 at 80%, non-ess→0 at 60%).
+ ['B1 Essential 85% (>80 tail)', P({'INC-01':'2000','EXP-06':'1700'})],       // essPct .85 -> eS 0
+ ['B2 Non-ess 50% (mid tail)',   P({'INC-01':'2000','EXP-14':'1000'})],       // nonPct .50 -> nS 20
+ ['B3 Non-ess 55% (mid tail)',   P({'INC-01':'2000','EXP-14':'1100'})]        // nonPct .55 -> nS 10
 ];
 const pct=x=>(x*100).toFixed(1)+'%', r1=x=>Math.round(x*10)/10, eq=(x,y)=>Math.abs(x-y)<0.5;
 let fails=0;
