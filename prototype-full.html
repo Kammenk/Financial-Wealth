@@ -1226,7 +1226,7 @@ function cashflowResult(){
   var nonCat=nonPct<=.20?'EXCELLENT':nonPct<=.25?'VERY_GOOD':nonPct<=.30?'GOOD':nonPct<=.40?'NEEDS_IMPROVEMENT':'RISKY';
   var savCat=savPct>=.30?'EXCELLENT':savPct>=.20?'VERY_GOOD':savPct>=.15?'GOOD':savPct>.05?'NEEDS_IMPROVEMENT':'RISKY';
   var type=deficit>0?'DEFICIT':(residual>0?'SURPLUS':'BALANCED');
-  var rec=deficit>0?'DEFICIT':essPct>.65?'ESSENTIAL_RISK':(essPct>.55&&savPct<.20)?'ESSENTIAL_AND_SAVING':(nonPct>.30&&savPct<.20)?'NONESSENTIAL_AND_SAVING':savPct<.20?'SAVING':(essPct<=.40&&nonPct<=.20&&savPct>=.30)?'STRONG_ACCUMULATION':'BALANCED';
+  var rec=deficit>0?'DEFICIT':essPct>.65?'ESSENTIAL_RISK':(essPct>.60&&savPct<.20)?'ESSENTIAL_AND_SAVING':(nonPct>.30&&savPct<.20)?'NONESSENTIAL_AND_SAVING':savPct<.20?'SAVING':(essPct<=.40&&nonPct<=.20&&savPct>=.30)?'STRONG_ACCUMULATION':'BALANCED';
   var dEss=Math.max(0,ess-income*0.50), dNon=Math.max(0,non-income*0.30), dSav=Math.max(0,income*0.20-sav);
   var proj=null;
   if(rec==='DEFICIT') proj={delta:deficit,projected:null};
