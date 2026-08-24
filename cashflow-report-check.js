@@ -41,9 +41,9 @@ check('T01 Perfect',        {'INC-01':'5000','EXP-06':'2000','EXP-14':'1000','SA
 check('T02 50/30/20',       {'INC-01':'5000','EXP-06':'2500','EXP-14':'1500','SAV-04':'1000'},
       {status:'COMPLETE',score:82,category:'VERY_GOOD',rec:'BALANCED'});
 check('T03 Needs improve',  {'INC-01':'5000','EXP-06':'3000','EXP-14':'1500','SAV-04':'500'},
-      {status:'COMPLETE',score:54,category:'NEEDS_IMPROVEMENT',rec:'ESSENTIAL_AND_SAVING',projected:66,delta:500});
-check('T04 (see note)',     {'INC-01':'2000','EXP-06':'1200','EXP-14':'400','SAV-04':'200'},
-      {status:'COMPLETE',score:58,rec:'ESSENTIAL_AND_SAVING',projected:70,delta:200});
+      {status:'COMPLETE',score:54,category:'NEEDS_IMPROVEMENT',rec:'SAVING',projected:null,delta:500});
+check('T04 §8.4 example',   {'INC-01':'2000','EXP-06':'1200','EXP-14':'400','SAV-04':'200'},
+      {status:'COMPLETE',score:58,rec:'SAVING',projected:74,delta:200});
 check('T05 Deficit',        {'INC-01':'2000','EXP-06':'1200','EXP-14':'1000','SAV-04':'0'},
       {status:'COMPLETE',score:26,type:'DEFICIT',rec:'DEFICIT',projected:null,deficit:200});
 check('T06 Zero income',    {'INC-01':'0'}, {status:'BLOCKED_ZERO_INCOME'});
@@ -51,9 +51,9 @@ check('T07 Inconsistent',   {'INC-01':'3000','EXP-06':'2500','SAV-04':'800'}, {s
 check('T11 Gambling >5%',   {'INC-01':'2000','EXP-06':'900','EXP-14':'400','GAM-01':'yes','GAM-02':'120','SAV-04':'300'},
       {status:'COMPLETE',warn:true,non:520});
 
-console.log('\\nNOTE T04: the spec\\'s worked example (§8.4 / T04) expects the SAVING projection -> 74, but the');
-console.log('OUT priority table routes essential 60% & saving 10% to ESSENTIAL_AND_SAVING (priority 4 > 6) -> 70.');
-console.log('Engine follows the deterministic rule table; the 74 example is internally inconsistent. Needs client ruling.');
+console.log('\\nNOTE: per client decision, ESSENTIAL_AND_SAVING (OUT-030) now triggers at essential > 60%');
+console.log('(was > 55%), so the §8.4 worked example wins: T04 (essential 60%) routes to SAVING -> 74.');
+console.log('Update methodology §8.3 priority-4 threshold 55% -> 60% to match.');
 console.log('\\n================ '+(fails===0?'ALL REPORT CHECKS PASS':fails+' FAIL(ES)')+' ================');
 process.exit(fails===0?0:1);
 `;
