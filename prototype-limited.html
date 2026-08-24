@@ -828,7 +828,7 @@ const M = [
    {k:'bal',t:'Остатък по кредита',type:'n'},
    {k:'rate',t:'Годишен лихвен процент',type:'p'},
    {k:'pay',t:'Месечна вноска',type:'n'},
-   {k:'rtype',t:'Вид на лихвата',type:'c',opts:[{v:'fixed',l:'Фиксиран'},{v:'variable',l:'Променлив'},{v:'mixed',l:'Комбиниран'},{v:'idk',l:'Не знам'}]},
+   {k:'rtype',t:'Вид на лихвата',type:'c',opts:[{v:'fixed',l:'Фиксиран'},{v:'variable',l:'Променлив'}]},
    {k:'term',t:'Оставащ срок (години)',type:'i',unit:'г.'}
  ],
  summary:e=>'€ '+fmt(e.bal||0)+' · вноска € '+fmt(e.pay||0)+'/мес'},
@@ -851,8 +851,8 @@ const M = [
    {k:'bal',t:'Използван баланс',type:'n'},
    {k:'limit',t:'Кредитен лимит',type:'n'},
    {k:'rate',t:'Годишен лихвен процент',type:'p'},
-   {k:'minpay',t:'Минимална или обичайна месечна вноска',type:'n'},
-   {k:'behavior',t:'Погасявате ли изцяло баланса всеки месец?',type:'c',opts:[{v:'always',l:'Винаги — не пренасям баланс'},{v:'usually',l:'Обикновено, но понякога пренасям'},{v:'above_min',l:'Пренасям, но плащам над минимума'},{v:'min',l:'Плащам основно минималната вноска'}]}
+   {k:'paidInFull',t:'Погасявате ли изцяло баланса всеки месец?',type:'c',opts:[{v:'yes',l:'Да'},{v:'no',l:'Не'}]},
+   {k:'carriedPay',t:'Месечно плащане към пренесения баланс (ако не погасявате изцяло)',type:'n'}
  ],
  summary:e=>'€ '+fmt(e.bal||0)+' / лимит € '+fmt(e.limit||0)},
 {id:'G-OVER',cat:'Задължения',gate:true,t:'Имате ли овърдрафт?',type:'yn',opts:YN},
@@ -860,8 +860,6 @@ const M = [
 {id:'DEB-17',cat:'Задължения',t:'Годишен лихвен процент по овърдрафта',type:'p',when:a=>a['G-OVER']==='yes'},
 {id:'DEB-OD-FEES',cat:'Задължения',t:'Средни месечни лихви и такси по овърдрафта',type:'n',when:a=>a['G-OVER']==='yes'},
 {id:'DEB-OD-PRIN',cat:'Задължения',t:'Сума, с която реално намалявате овърдрафта месечно',type:'n',when:a=>a['G-OVER']==='yes'},
-{id:'DEB-21',cat:'Задължения',t:'Как използвате овърдрафта през последните 6 месеца?',type:'c',when:a=>a['G-OVER']==='yes',
- opts:[{v:'none',l:'Не съм го използвал/а'},{v:'rare',l:'Рядко и го погасих изцяло'},{v:'some',l:'В някои месеци, но излизам от него'},{v:'most',l:'През повечето месеци'},{v:'always',l:'Почти постоянно съм в овърдрафт'}]},
 {id:'DEB-18',cat:'Задължения',t:'Имали ли сте забавено или пропуснато плащане през последните 12 месеца?',h:'По кредит, кредитна карта, лизинг или овърдрафт.',type:'c',
  opts:[{v:'none',l:'Не'},{v:'resolved',l:'Да, но вече е погасено'},{v:'current',l:'Да, имам текущо просрочие'}]},
 {id:'DEB-19',cat:'Задължения',t:'Имате ли отразено в ЦКР просрочие над 30 дни през последните 5 години?',h:'Самооценка; не замества официална справка.',type:'c',
@@ -1171,7 +1169,7 @@ function mapAnswers(){
   var pension; if(g('EXP-13')>0||g('AST-12')>0) pension='third';
     else if(a['DEM-03']==='employed'||a['DEM-03']==='self') pension='mandatory'; else pension='idk';
   var ins=Array.isArray(a['INS-01'])?a['INS-01'].filter(function(x){return x!=='none';}):[];
-  var cardCarried=entries('DEB-CARD').reduce(function(t,e){return t+(e.behavior==='always'?0:(parseFloat(e.minpay)||0));},0);
+  var cardCarried=entries('DEB-CARD').reduce(function(t,e){return t+(e.paidInFull==='yes'?0:(parseFloat(e.carriedPay)||0));},0);
   var overdraftOut=a['G-OVER']==='yes'?g('DEB-OD-FEES')+g('DEB-OD-PRIN'):0;
   return {
     age:age, deps:a['DEM-02'], employment:a['DEM-03'], stability:a['INC-08'], housing:a['DEM-04'],
