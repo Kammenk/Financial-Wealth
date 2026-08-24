@@ -32,7 +32,7 @@ function methodology(a){
   // Debt payments DERIVED from per-obligation records (no aggregate EXP-02/EXP-11).
   const arr=id=>Array.isArray(a[id])?a[id]:[];
   const sumF=(id,f)=>arr(id).reduce((t,e)=>t+(parseFloat(e[f])||0),0);
-  const cardPay=arr('DEB-CARD').reduce((t,e)=>t+(e.behavior==='always'?0:(parseFloat(e.minpay)||0)),0);
+  const cardPay=arr('DEB-CARD').reduce((t,e)=>t+(e.paidInFull==='yes'?0:(parseFloat(e.carriedPay)||0)),0);
   const odOut=a['G-OVER']==='yes'?G(a,'DEB-OD-FEES')+G(a,'DEB-OD-PRIN'):0;
   const debtpay = sumF('DEB-MORT','pay')+sumF('DEB-LOAN','pay')+cardPay+odOut;
   const essExcl = G(a,'EXP-01')+G(a,'EXP-03')+G(a,'EXP-04')+G(a,'EXP-05')+G(a,'EXP-06')
@@ -73,9 +73,9 @@ const profiles=[
  ['P2 Mortgage record',    P({'INC-01':'2500','DEM-04':'mortgage','DEB-MORT':[{pay:'175'}],'EXP-03':'20','EXP-05':'100','EXP-06':'700','EXP-04':'250','EXP-07':'250','EXP-14':'750','SAV-04':'300'})],
  ['P3 Deficit/Risky',      P({'INC-01':'2000','DEM-04':'mortgage','DEB-MORT':[{pay:'500'}],'G-LOANS':'yes','DEB-LOAN':[{pay:'300'}],'EXP-06':'400','EXP-04':'300','EXP-14':'900','SAV-04':'0'})],
  ['P4 Debt-critical',      P({'INC-01':'3000','DEM-04':'mortgage','DEB-MORT':[{pay:'1000'}],'G-LOANS':'yes','DEB-LOAN':[{pay:'700'}],'EXP-06':'500','EXP-14':'300','SAV-04':'400'})],
- ['P5 Card+overdraft',     P({'INC-01':'3000','G-CARDS':'yes','DEB-CARD':[{bal:'2000',limit:'5000',minpay:'150',behavior:'min'}],'G-OVER':'yes','DEB-16':'800','DEB-17':'13','DEB-OD-FEES':'40','DEB-OD-PRIN':'100','EXP-06':'800','EXP-14':'450','SAV-04':'300','SAV-05':'200'})],
+ ['P5 Card+overdraft',     P({'INC-01':'3000','G-CARDS':'yes','DEB-CARD':[{bal:'2000',limit:'5000',rate:'24',paidInFull:'no',carriedPay:'150'}],'G-OVER':'yes','DEB-16':'800','DEB-17':'13','DEB-OD-FEES':'40','DEB-OD-PRIN':'100','EXP-06':'800','EXP-14':'450','SAV-04':'300','SAV-05':'200'})],
  ['P6 Invest+gambling',    P({'INC-01':'2000','EXP-06':'900','EXP-04':'300','EXP-14':'600','GAM-01':'yes','GAM-02':'100','SAV-04':'300','SAV-05':'150','EXP-13':'120'})],
- ['P7 Card paid-in-full',  P({'INC-01':'2000','G-CARDS':'yes','DEB-CARD':[{bal:'700',limit:'3000',minpay:'200',behavior:'always'}],'EXP-06':'600','EXP-14':'400','SAV-04':'300'})],
+ ['P7 Card paid-in-full',  P({'INC-01':'2000','G-CARDS':'yes','DEB-CARD':[{bal:'700',limit:'3000',rate:'20',paidInFull:'yes',carriedPay:'200'}],'EXP-06':'600','EXP-14':'400','SAV-04':'300'})],
  // Boundary profiles locking the new tail endpoints (essential→0 at 80%, non-ess→0 at 60%).
  ['B1 Essential 85% (>80 tail)', P({'INC-01':'2000','EXP-06':'1700'})],       // essPct .85 -> eS 0
  ['B2 Non-ess 50% (mid tail)',   P({'INC-01':'2000','EXP-14':'1000'})],       // nonPct .50 -> nS 20

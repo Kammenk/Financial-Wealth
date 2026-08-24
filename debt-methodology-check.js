@@ -44,7 +44,7 @@ function methodology(a){
   const morts=arr(a,'DEB-MORT'), loans=arr(a,'DEB-LOAN'), cards=arr(a,'DEB-CARD');
   const odBal=g(a,'DEB-16'), odRate=g(a,'DEB-17');
   // 1) payments / income  (DEB-03 + DEB-09 + DEB-15)
-  const pay=morts.reduce((t,e)=>t+nv(e.pay),0)+loans.reduce((t,e)=>t+nv(e.pay),0)+cards.reduce((t,e)=>t+nv(e.minpay),0);
+  const pay=morts.reduce((t,e)=>t+nv(e.pay),0)+loans.reduce((t,e)=>t+nv(e.pay),0)+cards.reduce((t,e)=>t+(e.paidInFull==='yes'?0:nv(e.carriedPay)),0);
   const payPct=pay/inc, payPts=Math.max(0,pwv(payPct,PAY));
   // 2) debt / assets
   const debt=morts.reduce((t,e)=>t+nv(e.bal),0)+loans.reduce((t,e)=>t+nv(e.bal),0)+cards.reduce((t,e)=>t+nv(e.bal),0)+odBal;
@@ -61,18 +61,18 @@ function methodology(a){
   contracts.forEach(c=>{const idx=c.rate/c.bm; const p=pwv(idx,COST); const w=c.bal*c.rate; wsum+=w; psum+=p*w;});
   if(wsum>0) costPts=psum/wsum;
   // 4) cards & overdraft
-  const hasCard=cards.length>0, hasOD=(a['G-OVER']==='yes')||odBal>0||!!a['DEB-21'];
+  const hasCard=cards.length>0, hasOD=(a['G-OVER']==='yes')||odBal>0;
   let cardScore=null, odScore=null;
   if(hasCard){
     const tBal=cards.reduce((t,e)=>t+nv(e.bal),0), tLim=cards.reduce((t,e)=>t+nv(e.limit),0);
     const util=tLim>0?tBal/tLim:(tBal>0?1.5:0);
     const utilPts=util>1?0:Math.max(0,pwv(util,UTIL));
-    const behPts=BEHAV[cards[0].behavior]!==undefined?BEHAV[cards[0].behavior]:55;
+    const behPts=cards[0].paidInFull==='yes'?BEHAV['always']:BEHAV['min']; // derived from paidInFull; 4-level behavior removed per cash-flow spec
     cardScore=0.5*utilPts+0.5*behPts;
   }
   if(hasOD){
     const depth=odBal/inc; const depthPts=depth>=0.75?0:Math.max(0,pwv(depth,ODDEPTH));
-    const usePts=ODUSE[a['DEB-21']]!==undefined?ODUSE[a['DEB-21']]:100;
+    const usePts=100; // DEB-21 (overdraft 6-month usage) removed per cash-flow spec; debt-health loses this input
     odScore=0.4*depthPts+0.6*usePts;
   }
   let cardsod;
@@ -125,11 +125,11 @@ const profiles=[
     'SAV-01':'1000','SAV-02':'5000','AST-12':'10000','AST-13':'8000','DEB-18':'none','DEB-19':'no'})],
  ['D2 Big mortgage', P({'INC-01':'4000','DEM-04':'mortgage','DEB-MORT':[{bal:'200000',rate:'2.5',pay:'900',rtype:'fixed',term:'25'}],
     'EXP-02':'900','AST-01':'300000','SAV-02':'10000','DEB-18':'none','DEB-19':'no'})],
- ['D3 Expensive card, debt>assets', P({'INC-01':'2500','G-CARDS':'yes','DEB-CARD':[{bal:'4000',limit:'5000',rate:'24',minpay:'200',behavior:'min'}],
+ ['D3 Expensive card, debt>assets', P({'INC-01':'2500','G-CARDS':'yes','DEB-CARD':[{bal:'4000',limit:'5000',rate:'24',paidInFull:'no',carriedPay:'200'}],
     'EXP-11':'200','SAV-02':'3000','DEB-18':'none','DEB-19':'no'})],
  ['D4 Current arrears >30d', P({'INC-01':'3000','DEB-LOAN':[{ltype:'consumer',bal:'3000',rate:'8',pay:'100'}],'EXP-11':'100',
     'SAV-02':'20000','DEB-18':'current','DEB-19':'yes','DEB-22':'d90'})],
- ['D5 Overdraft dependence', P({'INC-01':'2000','G-OVER':'yes','DEB-16':'800','DEB-17':'13','DEB-21':'most','EXP-11':'0',
+ ['D5 Overdraft dependence', P({'INC-01':'2000','G-OVER':'yes','DEB-16':'800','DEB-17':'13','EXP-11':'0',
     'SAV-02':'4000','DEB-18':'none','DEB-19':'no'})]
 ];
 const pct=x=>isFinite(x)?(x*100).toFixed(1)+'%':'∞', r1=x=>Math.round(x*10)/10;
