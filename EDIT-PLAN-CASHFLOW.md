@@ -66,12 +66,11 @@ totalCardDebtPayment    = Σ (CARD[i].paidInFull ? 0 : CARD[i].carriedPay)
 totalOverdraftCashOutflow = (G-OVER==='yes') ? g('DEB-OD-FEES') + g('DEB-OD-PRIN') : 0
 debtpay = totalMortgagePayment + totalLoanPayment + totalCardDebtPayment + totalOverdraftCashOutflow
 ```
-> ⚠ **Repeater sub-field audit required.** `mapAnswers` already reads `eSum('DEB-CARD','bal')` etc., so
-> records use short keys (`bal`, …). Confirm/add the sub-fields these formulas need:
-> - `DEB-MORT`: `pay` (monthly), `rate`, `rateType` FIXED/VARIABLE, `term` — **all mandatory**
-> - `DEB-LOAN`: `type`, `pay`, `rate`, `term`, `securityType` SECURED/UNSECURED
-> - `DEB-CARD`: `paidInFull` Y/N, `carriedPay` (required iff `paidInFull=false`), plus existing `bal`, `limit`, `rate`
-> - Overdraft: add `DEB-OD-FEES` (interest+fees/mo) and `DEB-OD-PRIN` (principal reduction/mo) — today only `DEB-16` used-amount + `DEB-17` rate exist.
+> ✅ **Repeater sub-field audit DONE — see `DEBT-REPEATER-AUDIT.md`.** Findings:
+> - `DEB-MORT` (`pay`) and `DEB-LOAN` (`pay`) — **ready, no schema change**; payment data already present (and today double-entered vs `EXP-02`/`EXP-11`).
+> - `DEB-CARD` — has `behavior`+`minpay` (both used by debt-health, keep). Cash-flow card payment via **Option A** (`behavior==='always' ? 0 : minpay`) or **Option B** (add dedicated `carriedPay`). → client item 6.
+> - Overdraft — **add `DEB-OD-FEES` + `DEB-OD-PRIN`** (missing); wire `totalOverdraftCashOutflow`.
+> - ⚠️ `DEB-21` is used by debt-health (`ODUSE`) — **keep the field, just exclude from cash flow**; don't delete. → client item 5.
 
 ## 3. Questionnaire schema `QS`  (search: `const QS`)
 
