@@ -768,16 +768,12 @@ const M = [
 
 /* ---- Настройки (CFG-01..03) ---- */
 {id:'CFG-01',cat:'Настройки',t:'За кого попълвате проверката?',h:'Не смесвайте лични доходи с домакински разходи.',type:'c',
- opts:[{v:'self',l:'Само за себе си'},{v:'household',l:'За цялото домакинство'}]},
-{id:'CFG-02',cat:'Настройки',t:'Как ще въвеждате сумите?',h:'Годишните суми се преобразуват към месечна база.',type:'c',
- opts:[{v:'monthly',l:'Месечно'},{v:'yearly',l:'Годишно'}]},
-{id:'CFG-03',cat:'Настройки',t:'Основна валута',h:'За MVP е достатъчна една основна валута.',type:'c',
- opts:[{v:'BGN',l:'BGN'},{v:'EUR',l:'EUR'},{v:'GBP',l:'GBP'},{v:'other',l:'Друга'}]},
+ opts:[{v:'self',l:'Само за себе си'}]},
 
 /* ---- Общи (DEM-01..04) ---- */
 {id:'DEM-01',cat:'Общи',t:'В коя възрастова група попадате?',type:'c',
  opts:['18–24','25–34','35–44','45–54','55–64','65–74','75+','Не желая да отговарям']},
-{id:'DEM-02',cat:'Общи',t:'Брой финансово зависими лица',h:'Включва деца и други зависими лица.',type:'i',unit:'бр.'},
+{id:'DEM-02',cat:'Общи',t:'Колко лица са зависими от доходите Ви?',h:'Включва деца и други зависими лица.',type:'i'},
 {id:'DEM-03',cat:'Общи',t:'Какъв е Вашият трудов статус?',type:'c',
  opts:[{v:'employed',l:'Трудов договор'},{v:'self',l:'Самонает / собствен бизнес'},{v:'retired',l:'Пенсионер'},{v:'unemployed',l:'Безработен'},{v:'other',l:'Друго'}]},
 {id:'DEM-04',cat:'Общи',t:'Какъв е жилищният Ви статус?',type:'c',
@@ -802,26 +798,26 @@ const M = [
 
 /* ---- Разходи (EXP-01..15) ---- */
 {id:'EXP-01',cat:'Разходи',t:'Наем',type:'n',chips:[500,800,1200,1800],when:a=>a['DEM-04']==='rent'},
-{id:'EXP-02',cat:'Разходи',t:'Месечни ипотечни плащания',type:'n',chips:[400,700,1100,1700],when:a=>a['DEM-04']==='mortgage'},
-{id:'EXP-03',cat:'Разходи',t:'Данък „недвижими имоти" и такса битови отпадъци',h:'Годишна сума — ще бъде разделена на 12.',type:'n',chips:[100,250,500,900],when:a=>a['DEM-04']==='own'||a['DEM-04']==='mortgage'},
+{id:'EXP-03',cat:'Разходи',t:'Данък „недвижими имоти" и такса битови отпадъци',h:'Средна месечна сума.',type:'n',chips:[10,25,50,90],when:a=>a['DEM-04']==='own'||a['DEM-04']==='mortgage'},
 {id:'EXP-04',cat:'Разходи',t:'Комунални услуги',h:'Ток, вода и отопление на месец.',type:'n',chips:[150,250,400,600]},
-{id:'EXP-05',cat:'Разходи',t:'Средни разходи за поддръжка и ремонти',h:'Средно на месец.',type:'n',chips:[50,120,250,500],when:a=>a['DEM-04']==='own'||a['DEM-04']==='mortgage'},
+{id:'EXP-05',cat:'Разходи',t:'Средни разходи за необходима поддръжка и ремонти',h:'Средно на месец.',type:'n',chips:[50,120,250,500],when:a=>a['DEM-04']==='own'||a['DEM-04']==='mortgage'},
 {id:'EXP-06',cat:'Разходи',t:'Храна и стоки за дома',type:'n',chips:[400,700,1000,1500]},
 {id:'EXP-07',cat:'Разходи',t:'Транспорт',type:'n',chips:[100,250,450,700]},
 {id:'EXP-08',cat:'Разходи',t:'Здравеопазване и лекарства',type:'n',chips:[30,80,200,400]},
 {id:'EXP-09',cat:'Разходи',t:'Разходи за деца, образование и зависими лица',type:'n',chips:[100,300,600,1200],when:a=>(parseInt(a['DEM-02'],10)||0)>0},
 {id:'EXP-10',cat:'Разходи',t:'Интернет и телефон',type:'n',chips:[30,50,80,120]},
-{id:'EXP-11',cat:'Разходи',t:'Месечни плащания по заеми, кредитни карти и автомобилно финансиране',h:'Без ипотечните плащания.',type:'n',chips:[0,200,500,900]},
 {id:'EXP-12',cat:'Разходи',t:'Общо месечни застрахователни премии',type:'n',chips:[20,60,150,300],when:a=>Array.isArray(a['INS-01'])&&a['INS-01'].length&&!has('INS-01','none')},
-{id:'EXP-13',cat:'Разходи',t:'Месечни доброволни пенсионни вноски',h:'Оставете празно, ако нямате.',type:'n',chips:[0,50,150,300]},
 {id:'EXP-14',cat:'Разходи',t:'Средни месечни неосновни разходи',h:'Хранене навън, почивки, развлечения, хобита, абонаменти.',type:'n',chips:[150,350,600,1000]},
-{id:'EXP-15',cat:'Разходи',t:'Общо годишни непериодични разходи',h:'Ремонти, автомобил, медицински разходи, празници — ще бъдат разделени на 12.',type:'n',chips:[500,1500,3000,6000]},
+{id:'GAM-01',cat:'Разходи',gate:true,t:'Имате ли разходи за хазарт?',type:'yn',opts:YN},
+{id:'GAM-02',cat:'Разходи',t:'Средни месечни разходи за хазарт',h:'Средно на месец.',type:'n',chips:[20,50,100,200],when:a=>a['GAM-01']==='yes'},
 
 /* ---- Спестявания (SAV-01..04) ---- */
 {id:'SAV-01',cat:'Спестявания',t:'Наличности по разплащателни сметки',h:'Текущо салдо.',type:'n',chips:[200,1000,3000,8000]},
 {id:'SAV-02',cat:'Спестявания',t:'Общо средства в спестовни сметки, депозити и кеш',type:'n',chips:[0,3000,10000,25000]},
 {id:'SAV-03',cat:'Спестявания',t:'Каква част от ликвидните Ви средства е за непредвидени ситуации?',h:'Финансов резерв — не се брои като отделен актив.',type:'n',chips:[0,2000,6000,15000]},
 {id:'SAV-04',cat:'Спестявания',t:'Колко спестявате средно на месец?',h:'Средно за последните 6–12 месеца.',type:'n',chips:[0,150,400,800]},
+{id:'SAV-05',cat:'Спестявания',t:'Колко инвестирате средно на месец?',h:'Нови месечни вноски — акции, ETF, фондове, облигации, крипто, метали. Без промяна в пазарната стойност.',type:'n',chips:[0,100,300,600]},
+{id:'EXP-13',cat:'Спестявания',t:'Месечни доброволни пенсионни вноски',h:'Оставете празно, ако нямате.',type:'n',chips:[0,50,150,300]},
 
 /* ---- Задължения (DEB-01..22) ---- */
 {id:'DEB-MORT',cat:'Задължения',type:'group',t:'Ипотечни кредити',h:'Добавете всяка ипотека поотделно — остатък, лихва, вноска, вид и срок.',
@@ -860,6 +856,8 @@ const M = [
 {id:'G-OVER',cat:'Задължения',gate:true,t:'Имате ли овърдрафт?',type:'yn',opts:YN},
 {id:'DEB-16',cat:'Задължения',t:'Използван размер на овърдрафта',type:'n',when:a=>a['G-OVER']==='yes'},
 {id:'DEB-17',cat:'Задължения',t:'Годишен лихвен процент по овърдрафта',type:'p',when:a=>a['G-OVER']==='yes'},
+{id:'DEB-OD-FEES',cat:'Задължения',t:'Средни месечни лихви и такси по овърдрафта',type:'n',when:a=>a['G-OVER']==='yes'},
+{id:'DEB-OD-PRIN',cat:'Задължения',t:'Сума, с която реално намалявате овърдрафта месечно',type:'n',when:a=>a['G-OVER']==='yes'},
 {id:'DEB-21',cat:'Задължения',t:'Как използвате овърдрафта през последните 6 месеца?',type:'c',when:a=>a['G-OVER']==='yes',
  opts:[{v:'none',l:'Не съм го използвал/а'},{v:'rare',l:'Рядко и го погасих изцяло'},{v:'some',l:'В някои месеци, но излизам от него'},{v:'most',l:'През повечето месеци'},{v:'always',l:'Почти постоянно съм в овърдрафт'}]},
 {id:'DEB-18',cat:'Задължения',t:'Имали ли сте забавено или пропуснато плащане през последните 12 месеца?',h:'По кредит, кредитна карта, лизинг или овърдрафт.',type:'c',
@@ -1013,7 +1011,7 @@ function quiz(){
 
   return '<div style="flex:1;display:flex;flex-direction:column;min-height:var(--screenh)">'+
     '<div style="flex:1;padding:26px 20px 24px">'+
-      '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:2px">'+'<span style="font-family:var(--mono);font-size:11.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--brass)">'+q.cat+'</span>'+'<span style="font-family:var(--mono);font-size:12.5px;color:var(--soft);white-space:nowrap">'+answeredSteps()+' / '+totalSteps()+'</span>'+'</div>'+
+      '<div style="height:4px;background:var(--hair);border-radius:2px;overflow:hidden;margin:0 0 18px"><div style="height:100%;width:'+Math.round(answeredSteps()/Math.max(1,totalSteps())*100)+'%;background:var(--petrol);border-radius:2px;transition:width .25s ease"></div></div>'+'<div style="margin-bottom:2px"><span style="font-family:var(--mono);font-size:11.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--brass)">'+q.cat+'</span></div>'+
       (q.gate?'<div style="font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--faint);margin-top:8px">за да покажем правилните въпроси</div>':'')+
       '<h2 style="font-family:var(--serif);font-size:24px;line-height:1.26;font-weight:600;margin:'+(q.gate?'8px':'0')+' 0 0">'+q.t+'</h2>'+
       (q.h?'<p style="font-size:13.5px;line-height:1.55;color:var(--soft);margin:10px 0 0">'+q.h+'</p>':'')+
@@ -1046,7 +1044,7 @@ function groupList(q){
   }
   return '<div style="flex:1;display:flex;flex-direction:column;min-height:var(--screenh)">'+
     '<div style="flex:1;padding:26px 20px 24px">'+
-      '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:2px">'+'<span style="font-family:var(--mono);font-size:11.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--brass)">'+q.cat+'</span>'+'<span style="font-family:var(--mono);font-size:12.5px;color:var(--soft);white-space:nowrap">'+answeredSteps()+' / '+totalSteps()+'</span>'+'</div>'+
+      '<div style="height:4px;background:var(--hair);border-radius:2px;overflow:hidden;margin:0 0 18px"><div style="height:100%;width:'+Math.round(answeredSteps()/Math.max(1,totalSteps())*100)+'%;background:var(--petrol);border-radius:2px;transition:width .25s ease"></div></div>'+'<div style="margin-bottom:2px"><span style="font-family:var(--mono);font-size:11.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--brass)">'+q.cat+'</span></div>'+
       '<h2 style="font-family:var(--serif);font-size:24px;line-height:1.26;font-weight:600;margin:8px 0 0">'+q.t+'</h2>'+
       (q.h?'<p style="font-size:13.5px;line-height:1.55;color:var(--soft);margin:10px 0 0">'+q.h+'</p>':'')+
       list+
@@ -1171,17 +1169,19 @@ function mapAnswers(){
   var pension; if(g('EXP-13')>0||g('AST-12')>0) pension='third';
     else if(a['DEM-03']==='employed'||a['DEM-03']==='self') pension='mandatory'; else pension='idk';
   var ins=Array.isArray(a['INS-01'])?a['INS-01'].filter(function(x){return x!=='none';}):[];
+  var cardCarried=entries('DEB-CARD').reduce(function(t,e){return t+(e.behavior==='always'?0:(parseFloat(e.minpay)||0));},0);
+  var overdraftOut=a['G-OVER']==='yes'?g('DEB-OD-FEES')+g('DEB-OD-PRIN'):0;
   return {
     age:age, deps:a['DEM-02'], employment:a['DEM-03'], stability:a['INC-08'], housing:a['DEM-04'],
     income: sum('INC-01','INC-02','INC-03','INC-04','INC-05','INC-06','INC-07'),
-    essential: sum('EXP-01','EXP-04','EXP-05','EXP-06','EXP-07','EXP-08','EXP-09','EXP-10','EXP-12') + g('EXP-03')/12 + g('EXP-15')/12,
-    nonessential: g('EXP-14'),
-    debtpay: g('EXP-02') + g('EXP-11'),
-    savings: g('SAV-04') + g('EXP-13'),
+    essential: sum('EXP-01','EXP-03','EXP-04','EXP-05','EXP-06','EXP-07','EXP-08','EXP-09','EXP-10','EXP-12'),
+    nonessential: g('EXP-14') + g('GAM-02'),
+    debtpay: eSum('DEB-MORT','pay') + eSum('DEB-LOAN','pay') + cardCarried + overdraftOut,
+    savings: g('SAV-04') + g('SAV-05') + g('EXP-13'),
     reserve: sum('SAV-01','SAV-02'),
     debt: eSum('DEB-CARD','bal') + eSum('DEB-LOAN','bal') + g('DEB-16'),
     invest: sum('AST-04','AST-05','AST-06','AST-07','AST-08','AST-09','AST-10'),
-    insurance: ins, pension: pension, discipline: a['DEB-18']||'none', shock: a['BEH-03']
+    insurance: ins, pension: pension, discipline: a['DEB-18']||'none', shock: a['BEH-03'], gambling: g('GAM-02')
   };
 }
 
