@@ -1196,7 +1196,8 @@ function mapAnswers(){
   // take precedence over the summed answers, so both the full score and the
   // cash-flow section reflect the corrected budget. See reconcile().
   if(S.recon){
-    ['income','essential','nonessential','debtpay','savings'].forEach(function(k){
+    // income is a fixed anchor — never overridden (the 5% test is measured against it)
+    ['essential','nonessential','debtpay','savings'].forEach(function(k){
       var rv=S.recon[k];
       if(rv!==undefined && rv!=='' && !isNaN(parseFloat(rv))) out[k]=parseFloat(rv);
     });
@@ -1336,6 +1337,15 @@ function reconcile(){
         '<span style="font-family:var(--mono);font-size:14px;color:var(--soft)">€</span>'+
       '</div></div>';
   };
+  // income is a fixed reference, not editable — shown to anchor the numbers below
+  var anchorRow=function(label,val,hint){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--hair)">'+
+      '<div><div style="font-size:14px;font-weight:500">'+label+'</div>'+(hint?'<div style="font-size:11.5px;color:var(--faint);margin-top:2px">'+hint+'</div>':'')+'</div>'+
+      '<div style="display:flex;align-items:baseline;gap:6px;flex:none">'+
+        '<span style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--soft)">'+esc(String(Math.round(val)))+'</span>'+
+        '<span style="font-family:var(--mono);font-size:14px;color:var(--soft)">€</span>'+
+      '</div></div>';
+  };
   var remainRow='<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 0 2px;margin-top:4px;border-top:2px solid var(--hair2)">'+
     '<span style="font-size:14px;font-weight:600">Неразпределен остатък</span>'+
     '<span id="recon-remain" style="font-family:var(--mono);font-size:19px;font-weight:700;color:'+s.col+'">'+cfMoney(Math.max(0,s.remain))+'</span></div>';
@@ -1351,7 +1361,7 @@ function reconcile(){
       '<h2 style="font-family:var(--serif);font-size:24px;line-height:1.26;font-weight:600;margin:10px 0 0">Нека уточним разпределението</h2>'+
       '<p style="font-size:13.5px;line-height:1.55;color:var(--soft);margin:10px 0 0">Част от дохода Ви не е разпределена към разходи или спестявания. Прегледайте сумите по-долу — редактирайте направо тук, за да Ви дадем точна оценка.</p>'+
       '<div style="margin-top:20px">'+
-        row('Общ месечен доход','income','Заплати, хонорари, наеми — след данъци')+
+        anchorRow('Общ месечен доход',v.income,'Заплати, хонорари, наеми — след данъци')+
         row('Основни разходи','essential','Наем, сметки, храна, транспорт, здраве')+
         row('Вноски по кредити','debtpay','Ипотека, кредити, карти, лизинг')+
         row('Неосновни разходи','nonessential','Хранене навън, развлечения, абонаменти')+
