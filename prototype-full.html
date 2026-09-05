@@ -146,10 +146,11 @@ S = {
   qi: S.qi || 0, edit: null,
   answers: S.answers || {},
   email: S.email || '', emailSent: !!S.emailSent, emailErr: false,
+  recon: S.recon || {}, reconSkipped: !!S.reconSkipped,
   calcN: 0
 };
 function save(){
-  try{ localStorage.setItem(KEY, JSON.stringify({screen:S.screen,qi:S.qi,answers:S.answers,email:S.email,emailSent:S.emailSent})); }catch(e){}
+  try{ localStorage.setItem(KEY, JSON.stringify({screen:S.screen,qi:S.qi,answers:S.answers,email:S.email,emailSent:S.emailSent,recon:S.recon,reconSkipped:S.reconSkipped})); }catch(e){}
 }
 function set(patch){ Object.assign(S, patch); save(); render(); }
 
@@ -727,14 +728,22 @@ function goNext(){
   else startCalc();
 }
 let calcT;
+// After the calc animation, gate the report behind the reconcile screen when
+// too much of the income is left unallocated (client rule: > 5% of income).
+function afterCalcScreen(){ return needsReconcile() ? 'reconcile' : 'report'; }
+function needsReconcile(){
+  var r; try{ r = cashflowResult(); }catch(e){ return false; }
+  if(!r || r.status !== 'COMPLETE') return false;   // zero-income / inconsistent handle themselves
+  return r.income > 0 && (r.unalloc / r.income) > 0.05;
+}
 function startCalc(){
   set({screen:'calc', calcN:0});
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(reduce){ S.calcN = 8; render(); setTimeout(() => set({screen:'report'}), 600); return; }
+  if(reduce){ S.calcN = 8; render(); setTimeout(() => set({screen:afterCalcScreen()}), 600); return; }
   let n = 0;
   calcT = setInterval(() => {
     n++; S.calcN = n; render();
-    if(n >= 8){ clearInterval(calcT); setTimeout(() => set({screen:'report'}), 360); }
+    if(n >= 8){ clearInterval(calcT); setTimeout(() => set({screen:afterCalcScreen()}), 360); }
   }, 200);
 }
 function sendEmail(){
@@ -742,7 +751,7 @@ function sendEmail(){
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){ set({emailErr:true}); return; }
   set({email:v, emailSent:true, emailErr:false});
 }
-function retake(){ S.answers = {}; S.qi = 0; S.emailSent = false; S.email = ''; set({screen:'landing'}); }
+function retake(){ S.answers = {}; S.qi = 0; S.emailSent = false; S.email = ''; S.recon = {}; S.reconSkipped = false; set({screen:'landing'}); }
 
 /* ============================ render ============================ */
 function render(){
@@ -1019,12 +1028,20 @@ function quiz(){
     '</div>'+foot+'</div>';
 }
 
+// A question counts as answered when it has a real value; groups make their
+// choice ("I have none" is a valid answer) via their own button.
+function isAnswered(q){
+  if(!q) return false;
+  if(q.type==='group') return true;
+  var v=S.answers[q.id];
+  if(q.type==='m') return Array.isArray(v) && v.length>0;
+  return v!==undefined && v!=='';
+}
 function footer(hasContinue){
-  const V=visible(), last=S.qi>=V.length-1;
-  let inner='';
-  if(hasContinue) inner+='<button onclick="goNext()" style="'+CTA+';font-size:13.5px">'+(last?'Към прегледа':'Продължи')+'</button>';
-  inner+='<button onclick="skip()" style="display:block;margin:'+(hasContinue?'10px':'0')+' auto 0;border:none;background:transparent;cursor:pointer;font-family:var(--mono);font-size:11.5px;color:var(--faint);text-decoration:underline;padding:6px">Пропусни</button>';
-  return '<div style="border-top:1px solid var(--hair);padding:14px 20px calc(14px + env(safe-area-inset-bottom))">'+inner+'</div>';
+  if(!hasContinue) return '';   // choice/scale advance on pick — no skip, no empty bar
+  const V=visible(), last=S.qi>=V.length-1, ok=isAnswered(curQ());
+  const btn='<button id="contBtn" onclick="goNext()"'+(ok?'':' disabled')+' style="'+CTA+';font-size:13.5px;opacity:'+(ok?'1':'.4')+';pointer-events:'+(ok?'auto':'none')+'">'+(last?'Към прегледа':'Продължи')+'</button>';
+  return '<div style="border-top:1px solid var(--hair);padding:14px 20px calc(14px + env(safe-area-inset-bottom))">'+btn+'</div>';
 }
 
 function groupList(q){
@@ -1088,7 +1105,11 @@ function groupEditor(q){
 
 function sanitize(v, type){ return type==='p' ? v.replace(/[^\d.,]/g,'').replace(',','.').slice(0,6) : v.replace(/[^\d]/g,'').slice(0,12); }
 
-function onNum(el){ const q=curQ(); el.value=sanitize(el.value,q.type); S.answers[q.id]=el.value; save(); }
+function onNum(el){
+  const q=curQ(); el.value=sanitize(el.value,q.type); S.answers[q.id]=el.value; save();
+  const b=document.getElementById('contBtn');
+  if(b){ const ok=isAnswered(q); b.disabled=!ok; b.style.opacity=ok?'1':'.4'; b.style.pointerEvents=ok?'auto':'none'; }
+}
 
 function setNum(v){ S.answers[curQ().id]=String(v); save(); render(); }
 
@@ -1123,12 +1144,10 @@ function saveEntry(){
 
 function cancelEntry(){ set({edit:null}); }
 
-function skip(){ goNext(); }
-
 /* ---- глуе: full-questionnaire engine wired into the prototype result flow ---- */
 function startQuiz(){ set({screen:'quiz'}); }
 function goBack(){ if(S.edit){ set({edit:null}); return; } if(S.qi>0) set({qi:S.qi-1}); else set({screen:'landing'}); }
-function goNext(){ var V=visible(); if(S.qi<V.length-1) set({qi:S.qi+1}); else startCalc(); }
+function goNext(){ if(!isAnswered(curQ())) return; var V=visible(); if(S.qi<V.length-1) set({qi:S.qi+1}); else startCalc(); }
 function header(){
   var icon = curTheme()==='dark'?'◑':'◐';
   var tbtn='<button onclick="toggleTheme()" aria-label="Смени темата" style="border:none;background:transparent;color:var(--soft);font-size:14px;padding:4px 0 4px 10px;cursor:pointer">'+icon+'</button>';
@@ -1150,7 +1169,7 @@ function header(){
 function render(){
   var V=visible(); if(S.qi>V.length-1) S.qi=Math.max(0,V.length-1);
   var scr=S.screen;
-  var body = scr==='landing'?landing() : scr==='quiz'?quiz() : scr==='calc'?calcScreen() : scr==='report'?report() : result();
+  var body = scr==='landing'?landing() : scr==='quiz'?quiz() : scr==='calc'?calcScreen() : scr==='reconcile'?reconcile() : scr==='report'?report() : result();
   var app=document.getElementById('app');
   var keep = scr==='quiz'||scr==='calc';
   app.innerHTML=header()+body;
@@ -1171,7 +1190,7 @@ function mapAnswers(){
   var ins=Array.isArray(a['INS-01'])?a['INS-01'].filter(function(x){return x!=='none';}):[];
   var cardCarried=entries('DEB-CARD').reduce(function(t,e){return t+(e.paidInFull==='yes'?0:(parseFloat(e.carriedPay)||0));},0);
   var overdraftOut=a['G-OVER']==='yes'?g('DEB-OD-FEES')+g('DEB-OD-PRIN'):0;
-  return {
+  var out = {
     age:age, deps:a['DEM-02'], employment:a['DEM-03'], stability:a['INC-08'], housing:a['DEM-04'],
     income: sum('INC-01','INC-02','INC-03','INC-04','INC-05','INC-06','INC-07'),
     essential: sum('EXP-01','EXP-03','EXP-04','EXP-05','EXP-06','EXP-07','EXP-08','EXP-09','EXP-10','EXP-12'),
@@ -1183,6 +1202,17 @@ function mapAnswers(){
     invest: sum('AST-04','AST-05','AST-06','AST-07','AST-08','AST-09','AST-10'),
     insurance: ins, pension: pension, discipline: a['DEB-18']||'none', shock: a['BEH-03'], gambling: g('GAM-02')
   };
+  // Reconcile overrides: values the user corrected on the cash-flow check screen
+  // take precedence over the summed answers, so both the full score and the
+  // cash-flow section reflect the corrected budget. See reconcile().
+  if(S.recon){
+    // income is a fixed anchor — never overridden (the 5% test is measured against it)
+    ['essential','nonessential','debtpay','savings'].forEach(function(k){
+      var rv=S.recon[k];
+      if(rv!==undefined && rv!=='' && !isNaN(parseFloat(rv))) out[k]=parseFloat(rv);
+    });
+  }
+  return out;
 }
 
 
@@ -1268,6 +1298,9 @@ function cashflowSection(){
   var proj=res.proj&&res.proj.projected!=null?
     '<p style="font-size:13px;line-height:1.6;color:var(--soft);margin:12px 0 0">Ако приложите месечната промяна от '+cfMoney(res.proj.delta)+', прогнозната оценка за паричния поток би се променила от '+res.score+'/100 на '+res.proj.projected+'/100.</p>':'';
   var warn=res.warn?'<p style="font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--amber);margin:12px 0 0">⚠ Разходите Ви за хазарт са '+cfPct(res.warn.rate)+' ('+cfMoney(res.warn.amount)+') от месечния доход и надвишават прага за внимание от 5%.</p>':'';
+  var reconCaveat=(S.reconSkipped && res.income>0 && res.unalloc/res.income>0.05)?
+    '<p style="font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--amber);margin:12px 0 0">⚠ '+cfMoney(res.unalloc)+' от дохода Ви остават неразпределени. Оценката е предварителна — уточнете разпределението за по-точен резултат.</p>':'';
+  warn=reconCaveat+warn;
   return wrap(
     '<div style="display:flex;align-items:baseline;gap:10px;margin-top:8px">'+
       '<span style="font-family:var(--mono);font-weight:600;font-size:52px;line-height:1;letter-spacing:-0.03em">'+res.score+'</span>'+
@@ -1284,6 +1317,93 @@ function cashflowSection(){
       '<div style="font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--petrol)">Водеща препоръка</div>'+
       '<p style="font-size:14px;line-height:1.6;margin:8px 0 0">'+cfRecText(res)+'</p>'+proj+'</div>'+warn);
 }
+
+/* ============ Reconcile screen (unallocated-remainder gate) ============ */
+/* Shown before the report when > 5% of income is left unallocated. Lets the
+   user correct the five budget figures in place; edits flow through S.recon. */
+function reconVals(){
+  var m=mapAnswers();
+  return {income:m.income, essential:m.essential, debtpay:m.debtpay, nonessential:m.nonessential, savings:m.savings};
+}
+function reconState(v){
+  var remain=v.income - v.essential - v.debtpay - v.nonessential - v.savings;
+  var pct=v.income>0 ? remain/v.income*100 : 0;
+  var st = remain<-0.005 ? 'over' : (remain > v.income*0.05+0.005 ? 'high' : 'ok');
+  return {remain:remain, pct:pct, st:st, col: st==='ok'?'var(--green)':(st==='over'?'var(--amber)':'var(--red)')};
+}
+function reconMsg(s){
+  if(s.st==='over') return 'Разпределили сте повече от месечния си доход. Намалете някоя от сумите, за да продължите.';
+  if(s.st==='high') return '<b>'+cfMoney(Math.max(0,s.remain))+' ('+cfPct(s.pct)+')</b> от дохода Ви не са разпределени. Обикновено това значи, че някоя сума е занижена — най-често спестяванията. Коригирайте я под 5% от дохода.';
+  return 'Готово — неразпределеният остатък е под 5% от дохода. Можете да продължите към доклада.';
+}
+function reconcile(){
+  var v=reconVals(), s=reconState(v);
+  var row=function(label,k,hint){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--hair)">'+
+      '<div><div style="font-size:14px;font-weight:500">'+label+'</div>'+(hint?'<div style="font-size:11.5px;color:var(--faint);margin-top:2px">'+hint+'</div>':'')+'</div>'+
+      '<div style="display:flex;align-items:baseline;gap:6px;flex:none">'+
+        '<input value="'+esc(String(Math.round(v[k])))+'" oninput="reconOn(this,\''+k+'\')" inputmode="numeric" autocomplete="off" placeholder="0" '+
+          'style="width:118px;text-align:right;font-family:var(--mono);font-size:18px;font-weight:600;background:transparent;border:none;border-bottom:1px solid var(--hair2);color:var(--ink);padding:2px 0">'+
+        '<span style="font-family:var(--mono);font-size:14px;color:var(--soft)">€</span>'+
+      '</div></div>';
+  };
+  // income is a fixed reference, not editable — shown to anchor the numbers below
+  var anchorRow=function(label,val,hint){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--hair)">'+
+      '<div><div style="font-size:14px;font-weight:500">'+label+'</div>'+(hint?'<div style="font-size:11.5px;color:var(--faint);margin-top:2px">'+hint+'</div>':'')+'</div>'+
+      '<div style="display:flex;align-items:baseline;gap:6px;flex:none">'+
+        '<span style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--soft)">'+esc(String(Math.round(val)))+'</span>'+
+        '<span style="font-family:var(--mono);font-size:14px;color:var(--soft)">€</span>'+
+      '</div></div>';
+  };
+  var remainRow='<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 0 2px;margin-top:4px;border-top:2px solid var(--hair2)">'+
+    '<span style="font-size:14px;font-weight:600">Неразпределен остатък</span>'+
+    '<span id="recon-remain" style="font-family:var(--mono);font-size:19px;font-weight:700;color:'+s.col+'">'+cfMoney(Math.max(0,s.remain))+'</span></div>';
+  var chip='<div id="recon-chip" style="margin-top:16px;padding:13px 15px;border-radius:6px;border:1px solid '+s.col+';background:color-mix(in oklab,'+s.col+' 8%,transparent)">'+
+    '<div id="recon-msg" style="font-size:13px;line-height:1.55;color:var(--ink)">'+reconMsg(s)+'</div></div>';
+  var addBtn='<button id="recon-addbtn" onclick="reconAddToSavings()" style="display:'+(s.st==='high'?'block':'none')+';margin-top:12px;width:100%;border:1px dashed var(--petrol);background:transparent;color:var(--petrol);font-family:var(--mono);font-size:12.5px;padding:13px 16px;border-radius:4px;cursor:pointer">+ Добави '+cfMoney(Math.max(0,s.remain))+' към спестяванията</button>';
+  var dis=s.st!=='ok';
+  var cta='<button id="recon-cta" onclick="reconContinue()" '+(dis?'disabled':'')+' style="'+CTA+';opacity:'+(dis?'.4':'1')+';pointer-events:'+(dis?'none':'auto')+'">Продължи към доклада</button>';
+  var skip='<button onclick="reconSkip()" style="display:block;margin:10px auto 0;border:none;background:transparent;cursor:pointer;font-family:var(--mono);font-size:11.5px;color:var(--faint);text-decoration:underline;padding:6px">Това е излишък, който не следя — продължи</button>';
+  return '<div style="flex:1;display:flex;flex-direction:column;min-height:var(--screenh)">'+
+    '<div style="flex:1;padding:34px 20px 24px">'+
+      '<div style="'+EYEBRASS+'">Проверка на бюджета</div>'+
+      '<h2 style="font-family:var(--serif);font-size:24px;line-height:1.26;font-weight:600;margin:10px 0 0">Нека уточним разпределението</h2>'+
+      '<p style="font-size:13.5px;line-height:1.55;color:var(--soft);margin:10px 0 0">Част от дохода Ви не е разпределена към разходи или спестявания. Прегледайте сумите по-долу — редактирайте направо тук, за да Ви дадем точна оценка.</p>'+
+      '<div style="margin-top:20px">'+
+        anchorRow('Общ месечен доход',v.income,'Заплати, хонорари, наеми — след данъци')+
+        row('Основни разходи','essential','Наем, сметки, храна, транспорт, здраве')+
+        row('Вноски по кредити','debtpay','Ипотека, кредити, карти, лизинг')+
+        row('Неосновни разходи','nonessential','Хранене навън, развлечения, абонаменти')+
+        row('Спестяване','savings','Средно отделяно на месец')+
+        remainRow+
+      '</div>'+
+      chip+addBtn+
+    '</div>'+
+    '<div style="border-top:1px solid var(--hair);padding:14px 20px calc(14px + env(safe-area-inset-bottom))">'+cta+skip+'</div></div>';
+}
+function reconOn(el,k){
+  el.value=el.value.replace(/[^\d]/g,'').slice(0,12);
+  if(!S.recon) S.recon={};
+  S.recon[k]=el.value; save(); reconRecalc();
+}
+function reconRecalc(){
+  var v=reconVals(), s=reconState(v);
+  var rm=document.getElementById('recon-remain'); if(rm){ rm.textContent=cfMoney(Math.max(0,s.remain)); rm.style.color=s.col; }
+  var chip=document.getElementById('recon-chip'); if(chip){ chip.style.borderColor=s.col; chip.style.background='color-mix(in oklab,'+s.col+' 8%,transparent)'; }
+  var msg=document.getElementById('recon-msg'); if(msg) msg.innerHTML=reconMsg(s);
+  var cta=document.getElementById('recon-cta'); if(cta){ var d=s.st!=='ok'; cta.disabled=d; cta.style.opacity=d?'.4':'1'; cta.style.pointerEvents=d?'none':'auto'; }
+  var add=document.getElementById('recon-addbtn'); if(add){ add.style.display=s.st==='high'?'block':'none'; if(s.st==='high') add.textContent='+ Добави '+cfMoney(Math.max(0,s.remain))+' към спестяванията'; }
+}
+function reconAddToSavings(){
+  var v=reconVals(), remain=v.income - v.essential - v.debtpay - v.nonessential - v.savings;
+  if(remain<=0) return;
+  if(!S.recon) S.recon={};
+  S.recon.savings=String(Math.round(v.savings+remain));
+  save(); render();
+}
+function reconContinue(){ S.reconSkipped=false; set({screen:'report'}); }
+function reconSkip(){ S.reconSkipped=true; set({screen:'report'}); }
 
 render();
 
