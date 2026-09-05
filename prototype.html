@@ -1028,12 +1028,20 @@ function quiz(){
     '</div>'+foot+'</div>';
 }
 
+// A question counts as answered when it has a real value; groups make their
+// choice ("I have none" is a valid answer) via their own button.
+function isAnswered(q){
+  if(!q) return false;
+  if(q.type==='group') return true;
+  var v=S.answers[q.id];
+  if(q.type==='m') return Array.isArray(v) && v.length>0;
+  return v!==undefined && v!=='';
+}
 function footer(hasContinue){
-  const V=visible(), last=S.qi>=V.length-1;
-  let inner='';
-  if(hasContinue) inner+='<button onclick="goNext()" style="'+CTA+';font-size:13.5px">'+(last?'Към прегледа':'Продължи')+'</button>';
-  inner+='<button onclick="skip()" style="display:block;margin:'+(hasContinue?'10px':'0')+' auto 0;border:none;background:transparent;cursor:pointer;font-family:var(--mono);font-size:11.5px;color:var(--faint);text-decoration:underline;padding:6px">Пропусни</button>';
-  return '<div style="border-top:1px solid var(--hair);padding:14px 20px calc(14px + env(safe-area-inset-bottom))">'+inner+'</div>';
+  if(!hasContinue) return '';   // choice/scale advance on pick — no skip, no empty bar
+  const V=visible(), last=S.qi>=V.length-1, ok=isAnswered(curQ());
+  const btn='<button id="contBtn" onclick="goNext()"'+(ok?'':' disabled')+' style="'+CTA+';font-size:13.5px;opacity:'+(ok?'1':'.4')+';pointer-events:'+(ok?'auto':'none')+'">'+(last?'Към прегледа':'Продължи')+'</button>';
+  return '<div style="border-top:1px solid var(--hair);padding:14px 20px calc(14px + env(safe-area-inset-bottom))">'+btn+'</div>';
 }
 
 function groupList(q){
@@ -1097,7 +1105,11 @@ function groupEditor(q){
 
 function sanitize(v, type){ return type==='p' ? v.replace(/[^\d.,]/g,'').replace(',','.').slice(0,6) : v.replace(/[^\d]/g,'').slice(0,12); }
 
-function onNum(el){ const q=curQ(); el.value=sanitize(el.value,q.type); S.answers[q.id]=el.value; save(); }
+function onNum(el){
+  const q=curQ(); el.value=sanitize(el.value,q.type); S.answers[q.id]=el.value; save();
+  const b=document.getElementById('contBtn');
+  if(b){ const ok=isAnswered(q); b.disabled=!ok; b.style.opacity=ok?'1':'.4'; b.style.pointerEvents=ok?'auto':'none'; }
+}
 
 function setNum(v){ S.answers[curQ().id]=String(v); save(); render(); }
 
@@ -1132,12 +1144,10 @@ function saveEntry(){
 
 function cancelEntry(){ set({edit:null}); }
 
-function skip(){ goNext(); }
-
 /* ---- глуе: full-questionnaire engine wired into the prototype result flow ---- */
 function startQuiz(){ set({screen:'quiz'}); }
 function goBack(){ if(S.edit){ set({edit:null}); return; } if(S.qi>0) set({qi:S.qi-1}); else set({screen:'landing'}); }
-function goNext(){ var V=visible(); if(S.qi<V.length-1) set({qi:S.qi+1}); else startCalc(); }
+function goNext(){ if(!isAnswered(curQ())) return; var V=visible(); if(S.qi<V.length-1) set({qi:S.qi+1}); else startCalc(); }
 function header(){
   var icon = curTheme()==='dark'?'◑':'◐';
   var tbtn='<button onclick="toggleTheme()" aria-label="Смени темата" style="border:none;background:transparent;color:var(--soft);font-size:14px;padding:4px 0 4px 10px;cursor:pointer">'+icon+'</button>';
